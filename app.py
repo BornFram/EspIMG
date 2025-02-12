@@ -225,6 +225,7 @@ def get_image():
     # auth
     print("--- pic-upgate ---")
     auth_header = request.headers.get('Authorization')
+    print(auth_header)
     credentials_pair = auth_header.split(" ")[1]
     credentialsDecode = credentials_pair #credentials_pair.decode("utf-8")
     
