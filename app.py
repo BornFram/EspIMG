@@ -18,7 +18,7 @@ app.config['SECRET_KEY'] = 'your_secret_key'  # КЛЮЧ
 app.config['DATABASE'] = os.path.join(app.root_path, 'schema.sqlite')
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads')
 #app.config['ALLOWED_EXTENSIONS'] = {'jpg', 'jpeg'}
-app.config['ALLOWED_EXTENSIONS'] = {'png'}
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
 
 # Если папка для загрузок не существует, то соаздём её
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -141,35 +141,34 @@ def upload():
             flash("Файл не найден в запросе.")
             return redirect(request.url)
         file = request.files['file']
-        if file.img_name == '':
+        
+        if file.filename == '':
             flash("Файл не выбран.")
             return redirect(request.url)
-        if file and allowed_file(file.img_name):
-            img_name = secure_filename(file.img_name)
+        if file and allowed_file(file.filename):
+            img_name = secure_filename(file.filename)
             # Чтение бинарных данных из файла
             image_data = file.read()
             # Сохраняем бинарные данные в БД
             db = get_db()
             cur = db.cursor()
             cur.execute(
-                "INSERT INTO images (user_id, image_data, img_name) VALUES (?, ?, ?)",
+                "INSERT INTO images (user_id, image_data, filename) VALUES (?, ?, ?)",
                 (session['user_id'], image_data, img_name)
             )
             db.commit()
             flash("Файл успешно загружен и сохранён в базе данных.")
             return redirect(url_for('index'))
         else:
-            flash("Неверный формат файла. Допустимы только JPEG.")
+            flash("Неверный формат файла. Допустимы только JPEG. и .PNG")
             return redirect(request.url)
     return render_template('upload.html')
 
 
-
-# Эндпоинт для отдачи изображения по его идентификатору (или как ты хочешь?)
 from flask import Response
 
 @app.route('/get_image/<int:image_id>')
-def get_imagee(image_id):
+def get_image(image_id):
     db = get_db()
     cur = db.cursor()
     cur.execute("SELECT image_data FROM images WHERE id = ?", (image_id,))
@@ -201,11 +200,7 @@ def device_checking():
         
         print(incoming_data)
     
-        res_list = {
-            "remove":["rero"],
-            "update":["uno","presto","quatro"]
-        }
-        #return res_list
+        res_list = {}
         
         db = get_db()
         cur = db.cursor()
@@ -215,13 +210,14 @@ def device_checking():
         cur.execute("SELECT count(id) FROM images WHERE user_id = ?", (user_id[0],))
         amount_pic = cur.fetchone()[0]
         
-        return str(amount_pic)
+        res_list["updateNum"] = amount_pic
+        return res_list
        
     return "Unauthorized", 401
 
 
 @app.route('/pic-update', methods=['GET'])
-def get_image():
+def get_imagee():
     # auth
     print("--- pic-upgate ---")
     auth_header = request.headers.get('Authorization')
