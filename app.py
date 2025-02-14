@@ -1,4 +1,8 @@
 # app.py
+# TODO: декоратор на авторизацию
+# TODO: встроить структуру (каждая функция в свой файл) или перейти на жангу
+
+
 import os
 import sqlite3
 from datetime import datetime
@@ -9,6 +13,10 @@ from werkzeug.utils import secure_filename
 from flask import Response
 from PIL import Image
 import io
+
+# -----PARAMETERS -----
+picExt = ".png"
+# ---------------------
 
 app = Flask(__name__)
 
@@ -179,6 +187,15 @@ def get_image(image_id):
     else:
         return "Изображение не найдено", 404
 
+@app.route('/delete_image/<int:image_id>', methods=['POST'])
+def delete_image(image_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("DELETE FROM images WHERE id = ?", (image_id,))
+    db.commit()
+
+    print(f"Изображение с ID {image_id} удалено.")  # Замените на реальное удаление
+    return '', 204  # Успешное удаление, возвращаем пустой ответ с кодом 204
 
 # -----------------------------------------------------------
 
@@ -195,23 +212,42 @@ def device_checking():
     
     print("--- response for "+userLogin)
     if userLogin:
-        incoming_data = request.data.decode('utf-8')
-        incoming_data = incoming_data.split()
+        device_images = request.data.decode('utf-8')
+        device_images = device_images.split()
         
-        print(incoming_data)
+        print(device_images)
     
-        res_list = {}
+        responso = {"remove":[], "update":[], "updateNum": 0}
         
         db = get_db()
         cur = db.cursor()
         cur.execute("SELECT id FROM users WHERE username = ?", (userLogin,))
         user_id = cur.fetchone()
-        print(user_id[0])
-        cur.execute("SELECT count(id) FROM images WHERE user_id = ?", (user_id[0],))
-        amount_pic = cur.fetchone()[0]
         
-        res_list["updateNum"] = amount_pic
-        return res_list
+        cur.execute("SELECT id FROM images WHERE user_id = ?", (user_id[0],))
+        images_in_db = cur.fetchall()
+        for i in range(len(images_in_db)):
+            images_in_db[i] = str(images_in_db[i]["id"]) + picExt #'.png'
+        
+        missing_images_count = 0
+        
+        #files_to_delete = [file for file in device_images if file not in images_in_db]
+        #missing_images_count = sum(1 for file in images_in_db if file not in device_images)
+        
+        for file in device_images:
+            if file not in images_in_db:
+                responso["remove"].append(file)
+
+        for file in images_in_db:
+            if file not in device_images:
+                responso["update"].append(file)
+                missing_images_count += 1
+        
+        responso["updateNum"] = missing_images_count
+        print("responso:")
+        print(responso)
+        #responso = {"remove":[], "update":[], "updateNum": 0}
+        return responso
        
     return "Unauthorized", 401
 
@@ -225,6 +261,9 @@ def get_imagee():
     credentials_pair = auth_header.split(" ")[1]
     credentialsDecode = credentials_pair #credentials_pair.decode("utf-8")
     
+    needPic = request.headers.get('filename')
+    print(needPic)
+    
     userLogin = credentialsDecode.split(":")[0]
     deviceID = credentialsDecode.split(":")[1]
 
@@ -235,11 +274,11 @@ def get_imagee():
         
         cur.execute("SELECT id FROM users WHERE username = ?", (userLogin,))
         user_id = cur.fetchone()
-        cur.execute("SELECT id, image_data FROM images WHERE user_id = ?", (user_id[0],))
+        cur.execute("SELECT image_data FROM images WHERE id = ?", (needPic.split('.')[0],))
         img = cur.fetchone()
         
         img_data = img["image_data"]
-        img_name = str(img["id"]) + ".png"
+        img_name = needPic
         
         image = Image.open(io.BytesIO(img_data))
         image = image.resize((320,240))
