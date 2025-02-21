@@ -81,6 +81,12 @@ def index():
 # Страница регистрации
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    
+    #TODO: добавить ограничение на размер логина и пароля 
+    # в 128 значений. это ограничение стоит в есп. оно должно 
+    # быть одним, дабы не было переполнения
+    #TODO: добавить ограничение в бд и сюда, добавить обработчики и алерты юзеру
+    
     if request.method == 'POST':
         username = request.form['username'].strip()
         password = request.form['password']
@@ -204,6 +210,7 @@ def device_checking():
     print("--- checking ---")
     # auth
     auth_header = request.headers.get('Authorization')
+    print(auth_header)
     credentials_pair = auth_header.split(" ")[1]
     credentialsDecode = credentials_pair #credentials_pair.decode("utf-8")
     
@@ -280,7 +287,10 @@ def get_imagee():
         img_data = img["image_data"]
         img_name = needPic
         
-        image = Image.open(io.BytesIO(img_data))
+        image = Image.\
+            open(\
+            io.BytesIO(\
+                img_data))
         image = image.resize((320,240))
         img_byte_arr = io.BytesIO()
         image.save(img_byte_arr, format='PNG')
