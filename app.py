@@ -11,12 +11,50 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 from flask import Response
-from PIL import Image
+from PIL import Image, ImageSequence
+import imageio
 import io
+
+import utils
 
 # -----PARAMETERS -----
 picExt = ".png"
+
+device_memory = [0,0]
 # ---------------------
+######################################################################
+def get_ext(file_bytes):
+    """
+    Определяет расширение файла по массиву байтов.
+
+    Args:
+        file_bytes (bytes): Массив байтов файла.
+
+    Returns:
+        str: Расширение файла или None, если тип не распознан.
+    """
+    # Определяем магические числа для различных типов файлов
+    magic_numbers = {
+        b'\x89PNG\r\n\x1a\n': '.png',  # PNG
+        b'GIF8': '.gif',                # GIF
+        b'\xff\xd8\xff': '.jpg',        # JPEG
+        b'PK\x03\x04': '.zip',          # ZIP
+        b'%PDF-': '.pdf',               # PDF
+        b'RIFF': '.wav',                # WAV (RIFF)
+        b'WAVE': '.wav',                # WAV (WAVE)
+        b'ID3': '.mp3',                 # MP3
+        b'OggS': '.ogg',                # OGG
+        b'BZh': '.bz2',                 # BZ2
+        b'7z\xBC\xAF\x27\x1C': '.7z',   # 7z
+    }
+
+    for magic, extension in magic_numbers.items():
+        if file_bytes.startswith(magic):
+            return extension
+
+    return None
+######################################################################
+
 
 app = Flask(__name__)
 
@@ -26,12 +64,13 @@ app.config['SECRET_KEY'] = 'your_secret_key'  # КЛЮЧ
 app.config['DATABASE'] = os.path.join(app.root_path, 'schema.sqlite')
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads')
 #app.config['ALLOWED_EXTENSIONS'] = {'jpg', 'jpeg'}
-app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
 # Если папка для загрузок не существует, то соаздём её
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
+######################################################################
 
 # Функция для получения соединения с базой данных
 def get_db():
@@ -153,11 +192,13 @@ def upload():
     if request.method == 'POST':
         if 'file' not in request.files:
             flash("Файл не найден в запросе.")
+            print("  upload: Файл не найден в запросе.")
             return redirect(request.url)
         file = request.files['file']
         
         if file.filename == '':
             flash("Файл не выбран.")
+            print("  upload: Файл не выбран")
             return redirect(request.url)
         if file and allowed_file(file.filename):
             img_name = secure_filename(file.filename)
@@ -171,15 +212,33 @@ def upload():
                 (session['user_id'], image_data, img_name)
             )
             db.commit()
+            
             flash("Файл успешно загружен и сохранён в базе данных.")
+            print("pic save success")
             return redirect(url_for('index'))
         else:
-            flash("Неверный формат файла. Допустимы только JPEG. и .PNG")
+            flash("Неверный формат файла. Допустимы только .GIF, .JPEG и .PNG")
+            print("pic save error")
             return redirect(request.url)
     return render_template('upload.html')
 
-
 from flask import Response
+
+
+@app.route('/get_device_memory', methods=['GET'])
+def get_device_memory():
+    # db = get_db()
+    # cur = db.cursor()
+    # cur.execute("SELECT image_data FROM images WHERE id = ?", (image_id,))
+    # row = cur.fetchone()
+    # exto = get_ext(row['image_data'])
+    print(device_memory)
+    respo = {
+        'used_kbytes': device_memory[0],
+        'total_kbytes': device_memory[1]
+    }
+    
+    return respo
 
 @app.route('/get_image/<int:image_id>')
 def get_image(image_id):
@@ -187,9 +246,10 @@ def get_image(image_id):
     cur = db.cursor()
     cur.execute("SELECT image_data FROM images WHERE id = ?", (image_id,))
     row = cur.fetchone()
+    exto = get_ext(row['image_data'])
     if row:
         # Возвращаем бинарные данные изображения
-        return Response(row['image_data'], mimetype='image/jpeg')
+        return Response(row['image_data'], mimetype='image/'+exto)
     else:
         return "Изображение не найдено", 404
 
@@ -217,9 +277,19 @@ def device_checking():
     userLogin = credentialsDecode.split(":")[0]
     deviceID = credentialsDecode.split(":")[1]
     
+    # TODO: оптимизировать. добавить в таблицу девайсов этот параметр и писать туда
+    # TODO: обновлять только после того, как девайс скачал картинку (ответный запрос от девайса)
+    device_memory_raw = request.headers.get('devamema')
+    print("device_memory: ", device_memory_raw)
+    
+
+    device_memory[0] = int(device_memory_raw.split(" ")[0])
+    device_memory[1] = int(device_memory_raw.split(" ")[1])
+    
     print("--- response for "+userLogin)
     if userLogin:
         device_images = request.data.decode('utf-8')
+        #device_images = "1.png 3.png"
         device_images = device_images.split()
         
         print(device_images)
@@ -231,11 +301,19 @@ def device_checking():
         cur.execute("SELECT id FROM users WHERE username = ?", (userLogin,))
         user_id = cur.fetchone()
         
-        cur.execute("SELECT id FROM images WHERE user_id = ?", (user_id[0],))
+        cur.execute("SELECT id, image_data FROM images WHERE user_id = ?", (user_id[0],))
         images_in_db = cur.fetchall()
-        for i in range(len(images_in_db)):
-            images_in_db[i] = str(images_in_db[i]["id"]) + picExt #'.png'
         
+        for i in range(len(images_in_db)):
+            exto = get_ext(images_in_db[i]["image_data"])
+            if (exto == ".jpeg"):
+                exto = ".png"
+            if (exto == ".jpg"):
+                exto = ".png"
+            
+            images_in_db[i] = str(images_in_db[i]["id"]) + exto #'.png'
+        print("----- images in db: -----")
+        print(images_in_db)
         missing_images_count = 0
         
         #files_to_delete = [file for file in device_images if file not in images_in_db]
@@ -255,6 +333,9 @@ def device_checking():
         print(responso)
         #responso = {"remove":[], "update":[], "updateNum": 0}
         return responso
+    
+    # except:
+    #     print('ERROR: no header "device_memory"')
        
     return "Unauthorized", 401
 
@@ -285,28 +366,51 @@ def get_imagee():
         img = cur.fetchone()
         
         img_data = img["image_data"]
+        send_temp_data = 0
+        send_data = 0
+        exto = get_ext(img_data)
+        
         img_name = needPic
         
-        image = Image.\
-            open(\
-            io.BytesIO(\
-                img_data))
-        image = image.resize((320,240))
-        img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format='PNG')
-        img_byte_arr = img_byte_arr.getvalue()
-        
-        print("file name: "+img_name)
-
+        if (exto == ".png" or exto == ".jpeg" or exto == ".jpg" ):
+            image = Image.\
+                open(\
+                io.BytesIO(\
+                    img_data))
+            image = image.resize((320,240))
+            img_byte_arr = io.BytesIO()
+            image.save(img_byte_arr, format='PNG')
+            img_byte_arr = img_byte_arr.getvalue()
+            
+            print("file name: "+img_name)
+            send_temp_data = img_byte_arr
+            
+        if (exto == ".gif"):
+            with io.BytesIO(img_data) as byte_stream:
+                img = Image.open(byte_stream)
+                img_width, img_height = img.size
+                
+            to_sizo = utils.get_fit_res(img_width,img_height, utils.S_FITTED)
+            send_temp_data = utils.compress_gif(
+                input_bytes= img_data,
+                target_size= to_sizo,
+                max_colors= 64,
+                skip_frames= 1,
+                dispsl=30,
+                qlty=10,
+                frame_limit=80
+            )
+            
         b = (img_name + '\n')
         b = b.encode("utf-8")
         #img_data = b + img_data
-        send_data = b + img_byte_arr
+        send_data = b + send_temp_data
+        mimetypeo = 'image/' + exto
         
         respo = Response(
             response=send_data,
             status=200,
-            mimetype='image/png',
+            mimetype=mimetypeo,
             headers={
                 'Content-Disposition': f'attachment; img_name="{img_name}"',
                 'X-File-Name': img_name

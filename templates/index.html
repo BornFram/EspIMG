@@ -10,6 +10,69 @@
       background-color: #f9f9f9;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     }
+    
+    .device_meme {
+      padding: 0px;
+      margin: -28px 0px 4px;
+      
+    }
+    
+    
+    #use-space-info {
+      position:relative;
+      top: -1.9em;
+      right: 3em;
+      margin: 0px;
+      padding: 5px;
+      text-align: right;
+    }
+    .free-space-span {
+      
+      position: relative;
+      width: 48%;
+      top: -3.4em;
+      right: -100%;
+      margin:0px;
+      padding:0px;
+      text-align: right;
+    }
+    #free-space-info {
+      width: 100%;
+      display: inline;
+      margin: 0px;
+      padding: 2px;
+    }
+
+    #progress-bar {
+      width: 100%;
+      margin: 0px;
+      padding: 0px;
+      background-color: #ddd;
+      height: 1.5em;
+      border-radius: 10px;
+      align-items: center;
+    }
+    #progress {
+      display: inline-block;
+      position: relative;
+      bottom: 0px;
+      background-color: #80e648;
+      height: 1.5em;
+      border-radius: 10px;
+      margin: 0px;
+      padding: 2px;
+      align-items: center;
+      text-align: right;
+    }
+    
+    #space-info {
+      width: 100%;
+      padding: 0px;
+      margin-top: -5px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    
     .container {
       max-width: 800px;
       margin-top: 50px;
@@ -44,6 +107,22 @@
   <nav class="navbar navbar-light bg-light">
     <div class="container">
       <span class="navbar-brand mb-0 h1">Моя Галерея</span>
+      
+      <div style="width:30%;margin-top:10px;">
+      <p class="device_meme">Память устройства (kB)</p>
+      <div id="progress-bar">
+        <div id="progress-wrapper">
+          <span id="progress"></span>
+          <span id="use-space-info">.</span>
+        </div>
+        <span class="free-space-span">
+          <span id="free-space-info">.</span>
+        </span>
+      </div>
+      <span id="space-info">.</span>
+    </div>
+      
+
       <span class="navbar-text">
         Привет, {{ session['username'] }}!
         <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary btn-sm ms-2">Выйти</a>
@@ -111,6 +190,36 @@
         });
       });
     });
+  </script>
+  <script>
+    function updateProgressBar() {
+    fetch('/get_device_memory') // URL к вашему API для получения данных о свободном месте
+        .then(response => response.json())
+        .then(data => {
+            const occupiedKB = data.used_kbytes; // Занятое место в КБ
+            const totalKB = data.total_kbytes; // Общее место в КБ
+            
+            const freeSpaceKB = totalKB - occupiedKB; // Свободное место в КБ
+            
+            const progressWidth = (occupiedKB / totalKB) * 100 + '%';
+            
+            document.getElementById('progress').style.width = progressWidth;
+            
+            //document.getElementById('free-space-info').innerText = `Свободно ${freeSpaceKB} KB\nиз ${totalKB} KB`;
+            document.getElementById('free-space-info').innerText = `${freeSpaceKB}`;
+            document.getElementById('use-space-info').innerText = `${occupiedKB}`;
+            document.getElementById('space-info').innerText = `Всего: ${totalKB} kB`;
+        })
+        .catch(error => console.error('Ошибка:', error));
+    
+    setTimeout(updateProgressBar, 5000); // Обновляем каждые пять секунд
+}
+
+// Запускаем функцию при загрузке страницы
+document.addEventListener('DOMContentLoaded', function () {
+    updateProgressBar();
+});
+
   </script>
 </body>
 </html>

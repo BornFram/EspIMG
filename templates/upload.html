@@ -51,9 +51,11 @@
     <form method="post" enctype="multipart/form-data">
       <div class="mb-3">
         <!-- <label for="file" class="form-label">Выберите JPEG изображение</label> -->
-        <label for="file" class="form-label">Выберите PNG или JPG изображение</label>
+        <label for="file" class="form-label">Выберите PNG, JPG или GIF изображение
+          <p>Картинку не более 2МБ, gif - не более 5МБ!</p>
+        </label>
         <!-- <input type="file" class="form-control" id="file" name="file" accept=".jpg, .jpeg" required> -->
-        <input type="file" class="form-control" id="file" name="file" accept=".png, .jpg, .jpeg" required>
+        <input type="file" class="form-control" id="file" name="file" accept=".gif, .png, .jpg, .jpeg" required>
       </div>
       <div class="d-grid">
         <button type="submit" class="btn btn-primary">Загрузить</button>
