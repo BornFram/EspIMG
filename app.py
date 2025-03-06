@@ -377,7 +377,7 @@ def get_imagee():
                 open(\
                 io.BytesIO(\
                     img_data))
-            image = image.resize((320,240))
+            image = image.resize(utils.DISPLAY_SIZE)
             img_byte_arr = io.BytesIO()
             image.save(img_byte_arr, format='PNG')
             img_byte_arr = img_byte_arr.getvalue()
@@ -397,7 +397,7 @@ def get_imagee():
                 max_colors= 64,
                 skip_frames= 1,
                 dispsl=30,
-                qlty=10,
+                qlty=50,
                 frame_limit=80
             )
             

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Главная</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f9f9f9;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    
+    .device_meme {
+      padding: 0px;
+      margin: -28px 0px 4px;
+      
+    }
+    
+    
+    #use-space-info {
+      position:relative;
+      top: -30px;
+      right: 3em;
+      margin: 0px;
+      padding: 5px;
+      text-align: right;
+    }
+    .free-space-span {
+      position: relative;
+      width:100%;
+      top: -30px;
+      right: -80%;
+      margin:0px;
+      padding:0px;
+      text-align: right;
+    }
+    #free-space-info {
+      margin: 0px;
+      padding: 5px;
+    }
+
+    #progress-bar {
+      width: 100%;
+      margin: 0px;
+      padding: 0px;
+      background-color: #ddd;
+      height: 1.5em;
+      border-radius: 10px;
+      align-items: center;
+    }
+    #progress {
+      display: inline-block;
+      position: relative;
+      bottom: 0px;
+      background-color: #80e648;
+      height: 1.5em;
+      border-radius: 10px;
+      margin: 0px;
+      padding: 2px;
+      align-items: center;
+      text-align: right;
+    }
+    
+    #space-info {
+      width: 100%;
+      padding: 0px;
+      margin-top: -5px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin-top: 50px;
+      padding: 30px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      text-align: center;
+      font-weight: 300;
+    }
+    .card {
+      transition: transform 0.3s ease-in-out;
+    }
+    .card:hover {
+      transform: scale(1.02);
+    }
+    .alert {
+      animation: fadeIn 1s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .navbar {
+      margin-bottom: 30px;
+    }
+    /* Медиа-запрос для мобильных устройств */
+    @media (max-width: 768px) {
+      .container {
+        padding: 15px; /* Уменьшаем внутренний отступ на маленьких экранах */
+        margin: 10px auto; /* Уменьшаем внешний отступ */
+      }
+
+      .col-md-4 {
+        width: 100%; /* Карточки занимают всю ширину */
+      }
+
+      .navbar-brand {
+        font-size: 1.25rem; /* Уменьшаем размер шрифта на маленьких экранах */
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-light bg-light">
+    <div class="container">
+      <span class="navbar-brand mb-0 h1">Моя Галерея</span>
+      
+      <div style="width:30%;margin-top:10px;">
+      <p class="device_meme">Память устройства (kB)</p>
+      <div id="progress-bar">
+
+        <div id="progress-wrapper">
+          <span id="progress"></span>
+          
+        </div>
+        <span id="use-space-info">.</span>
+        <span class="free-space-span">
+          <span id="free-space-info">.</span>
+        </span>
+
+      </div>
+      <span id="space-info">.</span>
+    </div>
+      
+
+      <span class="navbar-text">
+        Привет, {{ session['username'] }}!
+        <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary btn-sm ms-2">Выйти</a>
+      </span>
+    </div>
+  </nav>
+  <div class="container">
+    <h2>Ваши изображения</h2>
+    {% if images %}
+      <div class="row g-3">
+        {% for image in images %}
+          <div class="col-md-4">
+            <div class="card">
+              <img src="{{ url_for('get_image', image_id=image['id']) }}" class="card-img-top" alt="Изображение">
+              <div class="card-body">
+                <p class="card-text">Загружено в {{ image['upload_time'].split()[1] }} </p>
+                <p class="card-text" style="color:gray"> {{ image['upload_time'].split()[0].split('-')[2]+'.' + image['upload_time'].split()[0].split('-')[1] + '.' + image['upload_time'].split()[0].split('-')[0][2:4] }}</p>
+                <!-- Кнопка удаления -->
+                <button type="button" class="btn btn-danger btn-sm delete-image-btn" data-image-id="{{ image['id'] }}">Удалить</button>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-center">Изображения ещё не загружены.</p>
+    {% endif %}
+    <div class="text-center mt-4">
+      <a href="{{ url_for('upload') }}" class="btn btn-primary">Загрузить новое изображение</a>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () 
+    {
+      const deleteButtons = document.querySelectorAll('.delete-image-btn');
+
+      deleteButtons.forEach(button => 
+      {
+        button.addEventListener('click', function () 
+        {
+          const imageId = this.dataset.imageId;
+          if (confirm('Вы уверены, что хотите удалить это изображение?')) 
+          {
+            fetch(`/delete_image/${imageId}`, 
+            {
+                method: 'POST',
+            })
+            .then(response => 
+            {
+              if (response.ok) {
+                // Удалить карточку изображения из DOM
+                this.closest('.col-md-4').remove();
+              } else {
+                alert('Ошибка при удалении изображения.');
+              }
+            })
+            .catch(error => {
+              console.error('Ошибка:', error);
+              alert('Произошла ошибка при отправке запроса.');
+            });
+          }
+        });
+      });
+    });
+  </script>
+  <script>
+    function updateProgressBar() {
+    fetch('/get_device_memory') // URL к вашему API для получения данных о свободном месте
+        .then(response => response.json())
+        .then(data => {
+            const occupiedKB = data.used_kbytes; // Занятое место в КБ
+            const totalKB = data.total_kbytes; // Общее место в КБ
+            
+            const freeSpaceKB = totalKB - occupiedKB; // Свободное место в КБ
+            
+            const progressWidth = (occupiedKB / totalKB) * 100 + '%';
+            
+            document.getElementById('progress').style.width = progressWidth;
+            
+            //document.getElementById('free-space-info').innerText = `Свободно ${freeSpaceKB} KB\nиз ${totalKB} KB`;
+            document.getElementById('free-space-info').innerText = `${freeSpaceKB}`;
+            document.getElementById('use-space-info').innerText = `${occupiedKB}`;
+            document.getElementById('space-info').innerText = `Всего: ${totalKB} kB`;
+        })
+        .catch(error => console.error('Ошибка:', error));
+    
+    setTimeout(updateProgressBar, 5000); // Обновляем каждые пять секунд
+}
+
+// Запускаем функцию при загрузке страницы
+document.addEventListener('DOMContentLoaded', function () {
+    updateProgressBar();
+});
+
+  </script>
+</body>
+</html>

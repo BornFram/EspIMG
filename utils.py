@@ -1,11 +1,16 @@
 from PIL import Image, ImageSequence
 import io
 
+DISPALY_WIDTH = 320 
+DISPLAY_HEIGHT = 240
+DISPLAY_SIZE = (DISPALY_WIDTH, DISPLAY_HEIGHT)
+
 S_STRETCH = "stretch"
 S_FITTED = "fitted"
 S_CROP = "crop"
 
-def get_fit_res(width, height, type=S_STRETCH, max_width=320, max_height=240):
+def get_fit_res(width, height, type=S_STRETCH, 
+                max_width=DISPALY_WIDTH, max_height=DISPLAY_HEIGHT):
     """
     Возвращает разрешение для картинки, которое вместится в заданные максимальные размеры,
     сохраняя соотношение сторон.
@@ -17,11 +22,11 @@ def get_fit_res(width, height, type=S_STRETCH, max_width=320, max_height=240):
 
     :return tuple: Новое разрешение (ширина, высота).
     """
-    new_width = 320
-    new_height = 240
+    new_width = max_width
+    new_height = max_height
     if (type == S_STRETCH):
-        new_width = 320
-        new_height = 240
+        new_width = max_width
+        new_height = max_height
         
     elif (type == S_FITTED):
     # Вычисляем коэффициент масштабирования по ширине и высоте
@@ -37,13 +42,16 @@ def get_fit_res(width, height, type=S_STRETCH, max_width=320, max_height=240):
         
     elif (type == S_CROP):
         # TODO: crop image. здесь уже нужно юзать саму либу,тк надо будет обрезать изображение
-        new_width = 320
-        new_height = 240
+        new_width = max_width
+        new_height = max_height
 
     return (new_width, new_height)
 
 
-def compress_gif(input_bytes, target_size=(320, 240), max_colors=64, skip_frames=0, dispsl=5, qlty=85, frame_limit=80):
+def compress_gif(input_bytes, 
+                 target_size=(DISPALY_WIDTH, DISPLAY_HEIGHT), 
+                 max_colors=64, skip_frames=0, dispsl=5, qlty=85, 
+                 frame_limit=80):
     """
     Сжимает GIF-файл.
     
