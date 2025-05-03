@@ -265,6 +265,28 @@ def delete_image(image_id):
 
 # -----------------------------------------------------------
 
+@app.route('/linking', methods=['GET'])
+def device_linking():
+    print("--- linking ---")
+    # auth
+    auth_header = request.headers.get('Authorization')
+    print(auth_header)
+    credentials_pair = auth_header.split(" ")[1]
+    credentialsDecode = credentials_pair #credentials_pair.decode("utf-8")
+    
+    userLogin = credentialsDecode.split(":")[0]
+    deviceID = credentialsDecode.split(":")[1]
+    
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT id FROM users WHERE username = ?", (userLogin,))
+    user_id = cur.fetchone()
+    
+    if (not(user_id)):
+        return "Unauthorized", 401
+    return 200
+    
+    
 @app.route('/checking', methods=['POST'])
 def device_checking():
     print("--- checking ---")
@@ -390,7 +412,8 @@ def get_imagee():
                 img = Image.open(byte_stream)
                 img_width, img_height = img.size
                 
-            to_sizo = utils.get_fit_res(img_width,img_height, utils.S_FITTED)
+            #to_sizo = utils.get_fit_res(img_width,img_height, utils.S_FITTED)
+            to_sizo = utils.get_fit_res(img_width,img_height, utils.S_STRETCH)
             send_temp_data = utils.compress_gif(
                 input_bytes= img_data,
                 target_size= to_sizo,
